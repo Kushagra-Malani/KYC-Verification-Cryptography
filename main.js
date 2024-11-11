@@ -82,6 +82,14 @@ function registerUser() {
                     console.log("Invalid Aadhaar ID. Please enter exactly 12 digits.");
                     askForAadhaarId();
                 } else {
+                    // Check if the Aadhaar ID is already registered
+                    const existingUser = blockchain.userList.list.find(user => user.aadhaarId === aadhaarId);
+                    if (existingUser) {
+                        console.log("Error: Aadhaar ID is already registered. Please try with a different Aadhaar ID.");
+                        mainMenu(); // Return to the main menu
+                        return;
+                    }
+
                     userData.aadhaarId = aadhaarId;
                     rl.question("Enter Your Recovery Key: ", (recoveryKey) => {
                         userData.recoveryKey = recoveryKey;
@@ -101,8 +109,18 @@ function registerUser() {
     });
 }
 
+
 function alreadyRegistered() {
     rl.question("Enter your User ID: ", (userId) => {
+        // Check if the user ID exists
+        const user = blockchain.userList.getUserByUid(userId);
+        
+        if (!user) {
+            console.log("Error: User ID does not exist. Please try again.");
+            mainMenu(); // Return to the main menu
+            return;
+        }
+
         console.log("\nPress 1 to view all your transactions");
         console.log("Press 2 to initiate a new transaction");
         console.log("Press 3 to update your details");
@@ -126,6 +144,7 @@ function alreadyRegistered() {
         });
     });
 }
+
 
 function viewUserTransactions(userId) {
     const transactions = blockchain.viewUser(userId);
@@ -169,19 +188,22 @@ function initiateTransaction(userId) {
 }
 
 function updateUserDetails(userId) {
-    rl.question("Enter new Aadhaar ID: ", (aadhaarId) => {
+    rl.question("Enter new Aadhaar ID (must be of 12 digits): ", (aadhaarId) => {
+        if (aadhaarId.length != 12 || isNaN(aadhaarId)) {
+            console.log("Invalid Aadhaar ID. Please enter exactly 12 digits.");
+            updateUserDetails(userId);
+        } else {
         rl.question("Enter new Recovery Key: ", (recoveryKey) => {
             blockchain.addTransaction({
                 userId,
                 aadhaarId,
-                panId,
                 recoveryKey,
                 type: 'Update'
             });
             console.log("User details updated successfully!");
             mainMenu();
         });
-    });
+    }});
 }
 
 function printBlockchain() {

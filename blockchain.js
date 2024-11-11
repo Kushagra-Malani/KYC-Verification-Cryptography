@@ -4,13 +4,13 @@ import calculateHash from './hash.js'
 
 class Blockchain {
     constructor() {
-        this.chain = [this.createGenesisBlock()];  // Initializes the blockchain with a genesis block (the first block in the chain).
+        this.chain = [this.createBlock()];  // Initializes the blockchain with a genesis block (the first block in the chain).
         this.difficulty = 2; // sets the difficulty level = 2
         this.pendingTransactions = [];  // An array to hold transactions that are yet to be included in a block.
         this.userList = new UserList();
     }
 
-    createGenesisBlock() {  // this method creates the first block (genesis block) in the blockchain.
+    createBlock() {  // this method creates the first block (genesis block) in the blockchain.
         return new Block(0, "0", Date.now(), []); // (index, prevhash, timestamp, transaction)
     }
 
@@ -64,29 +64,48 @@ class Blockchain {
     }
 
     verifyTransaction(transaction) {
-        // Use the same hash function to generate the hash for verification
         const transactionHash = calculateHash(transaction);
-        //console.log("test1 (userId):", transaction.userId);
-        //console.log("test2 (transactionHash):", transactionHash);
-    
         let KYCVerified = false;
-    
-        // Check within pendingTransactions to see if it matches
-        for (const pendingTransaction of this.pendingTransactions) {
-            if (calculateHash(pendingTransaction) === transactionHash) {
-                KYCVerified = true;
-                break;
-            }
-        }
-    
-        if (KYCVerified) {
-            console.log("KYC verification successful!");
-            return true;
-        } else {
-            console.error("KYC Verification unsuccessful, please manually verify your KYC.");
+
+        const p = 11;  // Prime number
+        const g = 2;   // Generator for prime p
+        
+        // Assume x is the user's Aadhaar ID for simplicity in this example
+        // Assume x is the user's Aadhaar ID for simplicity in this example
+        const user = this.userList.getUserByUid(transaction.userId);
+        if (!user) {
+            console.error("User not found for ZKP verification.");
             return false;
         }
-    }      
+
+        const x = parseInt(user.aadhaarId, 10);  // Sensitive data
+        const y = Math.pow(g, x) % p;  // Public key equivalent
+
+        // ZKP Steps
+        // Step 1: Alice (prover) chooses random r and computes h
+        const r = Math.floor(Math.random() * (p - 1));  // Random number r
+        const h = Math.pow(g, r) % p;
+
+        // Step 2: Bob (verifier) sends a random bit (0 or 1)
+        const b = Math.floor(Math.random() * 2);  // Random bit (0 or 1)
+
+        // Step 3: Alice sends s = (r + bx) % (p - 1) to Bob
+        const s = (r + b * x) % (p - 1);
+
+        // Step 4: Bob checks if g^s mod p == h * y^b mod p
+        const leftSide = Math.pow(g, s) % p;
+        const rightSide = (h * Math.pow(y, b)) % p;
+
+        // Verification
+        if (leftSide === rightSide) {
+            console.log("ZKP verification successful for transaction!");
+            KYCVerified = true;
+        } else {
+            console.error("ZKP verification failed for transaction.");
+        }
+
+        return KYCVerified;
+    }
     
     viewUser(userId) {// this method retrieves all transactions related to a specific user
         return this.chain.flatMap(block => block.transactions).filter(transaction => transaction.userId === userId);
